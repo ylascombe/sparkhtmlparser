@@ -8,6 +8,7 @@ import (
 	"io"
 	"golang.org/x/net/html"
 	"htmlparser/models"
+	"strconv"
 )
 
 func ParseSparkDashboard(htmlContent string) {
@@ -17,7 +18,7 @@ func ParseSparkDashboard(htmlContent string) {
 		return
 	}
 
-	tbody, err := findChild(bn, "tbody")
+	tbody, err := FindFirstChild(bn, "tbody")
 
 	if err != nil {
 		return
@@ -43,16 +44,10 @@ func GetTableBody(doc *html.Node) (*html.Node, error) {
 		if node.Type == html.ElementNode && node.Data == "table" {
 
 			for i:=0 ; i< len(node.Attr); i++ {
-				if node.Attr[i].Key == "id" {
-
-					if node.Attr[i].Val == "completed-batches-table" {
-						res = node
-						fmt.Println(node.Attr[i].Val)
-
-					}
+				if node.Attr[i].Key == "id" && node.Attr[i].Val == "completed-batches-table" {
+					res = node
 				}
 			}
-
 
 		}
 
@@ -66,10 +61,10 @@ func GetTableBody(doc *html.Node) (*html.Node, error) {
 	if res != nil {
 		return res, nil
 	}
-	return nil, errors.New("Missing <table> in the node tree")
+	return nil, errors.New("Missing <table> with id completed-batches-table in the node tree")
 }
 
-func findChild(doc *html.Node, tagName string) (*html.Node, error) {
+func FindFirstChild(doc *html.Node, tagName string) (*html.Node, error) {
 	var res *html.Node
 	var f func(*html.Node)
 	f = func(node *html.Node) {
@@ -80,6 +75,10 @@ func findChild(doc *html.Node, tagName string) (*html.Node, error) {
 		if res == nil {
 			for child := node.FirstChild; child != nil; child = child.NextSibling {
 				f(child)
+
+				if res != nil {
+					break
+				}
 			}
 		}
 	}
@@ -89,16 +88,21 @@ func findChild(doc *html.Node, tagName string) (*html.Node, error) {
 	}
 	return nil, errors.New("Missing <" + tagName + "> in the node tree")
 }
+
+
 func browseTr(tr *html.Node) (*html.Node, error) {
 
 	lignes := -1
 	var batches []models.Batch
 
+	evtsNumber := 0
+	processings := 0
+
 	for child := tr.FirstChild; child != nil;  child = child.NextSibling  {
 
 		if child.Data == "tr" {
 
-			td, err := findChild(child, "td")
+			td, err := FindFirstChild(child, "td")
 
 			if err != nil {
 				return nil, errors.New("Cannot find td")
@@ -110,17 +114,16 @@ func browseTr(tr *html.Node) (*html.Node, error) {
 				return nil, nil
 			}
 			batches = append(batches, batch)
+
+			processings += batch.ProcessingTime
+			evtsNumber += batch.InputSize
 			lignes++
 			batch = models.Batch{}
 		}
-
-		if lignes  == 0 {
-			fmt.Println("Nb lignes :", lignes+1)
-			fmt.Println(batches)
-			return nil, nil
-		}
-
 	}
+
+	fmt.Println("\nevents_per_second_avg " ,evtsNumber / processings)
+
 	fmt.Println("Nb lignes :", lignes+1)
 	fmt.Println(batches)
 	return nil, nil
@@ -134,32 +137,46 @@ func browseTd(td *html.Node) (models.Batch, error) {
 
 		if child.Data == "td"  {
 
+			val := strings.Trim(renderNode(child.FirstChild)," ")
+			val = strings.Replace(val, " ", "", -1)
+			val = strings.Replace(val, "\n", "", -1)
+			val = strings.Replace(val, "\r", "", -1)
+
 			switch cols {
 			case 0:
-				val := renderNode(child.FirstChild)
-				fmt.Println("ici", val)
 				batch.BatchTime = val
 			case 1:
-				//val, _ := strconv.Atoi(strings.Trim(renderNode(child.FirstChild)," "))
-				val := strings.Trim(renderNode(child.FirstChild)," ")
+				val = strings.Replace(val, "events", "", 1)
+				val, _ := strconv.Atoi(val)
 
-				fmt.Println("la", val)
-				batch.InputSize = val + ""
+				batch.InputSize = val
 			case 2:
-				batch.SchedulingDelay = renderNode(child.FirstChild)
+				if strings.Index(val, "ms") >0 {
+					val = strings.Replace(val, "ms", "", 1)
+					val, _ := strconv.Atoi(val)
+					batch.SchedulingDelay = val
+				} else {
+					val = strings.Replace(val, "s", "", 1)
+					val, _ := strconv.Atoi(val)
+					batch.SchedulingDelay = (val *1000)
+				}
 			case 3:
-				batch.ProcessingTime = renderNode(child.FirstChild)
+				val = strings.Replace(val, "s", "", 1)
+				val, _ := strconv.ParseFloat(val, 4)
+
+				batch.ProcessingTime = val
 			case 4:
-				batch.TotalDelay = renderNode(child.FirstChild)
+				val = strings.Replace(val, "s", "", 1)
+				val, _ := strconv.ParseFloat(val, 4)
+
+				batch.TotalDelay = val
 			}
-			fmt.Println("cols", cols)
 			cols++
 		} else {
 
 			fmt.Println("lost", child.Attr)
 		}
 	}
-	fmt.Println(batch)
 	return batch, nil
 }
 
