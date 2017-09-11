@@ -12,12 +12,12 @@ func main() {
 
 	prometheus := router.Group("/")
 	{
-		prometheus.GET("/", analyser.ParseSparkDashboard)
+		prometheus.GET("/", analyser.Prometheus)
 	}
 
 	csv := router.Group("/csv")
 	{
-		csv.GET("/", analyser.ParseSparkDashboard)
+		csv.GET("/", analyser.Csv)
 	}
 	router.Run()
 

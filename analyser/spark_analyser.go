@@ -13,25 +13,13 @@ import (
 	"github.com/montanaflynn/stats"
 )
 
-func ParseSparkDashboard(c *gin.Context) {
-	doc, _ := html.Parse(strings.NewReader(htm))
-	bn, err := GetTableBody(doc)
-	if err != nil {
-		return
-	}
+func Prometheus(c *gin.Context) {
 
-	tbody, err := FindFirstChild(bn, "tbody")
+	res, err := parseSparkDashboard()
 
 	if err != nil {
-		return
+		c.String(503, "Error ")
 	}
-
-	res, err := browseTr(tbody)
-
-	if err != nil {
-		return
-	}
-
 	var schedulingDelays []float64
 	var evtsPerBatchs []float64
 	var processingTimes []float64
@@ -42,69 +30,75 @@ func ParseSparkDashboard(c *gin.Context) {
 		processingTimes = append(processingTimes, float64(res.Batches[i].ProcessingTime))
 	}
 
-	//body := renderNode(tbody)
-	//fmt.Println(body)
-	c.String(200, fmt.Sprintf("\nevents_per_second_avg %d", res.EventsPerSecondAvg))
-	evtsPerSecondMin, _ := stats.Min(evtsPerBatchs)
-	c.String(200, fmt.Sprintf("\nevents_per_second_min %d", int(evtsPerSecondMin)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_10_percentile %d", getPercentileInt(evtsPerBatchs, 10)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_20_percentile %d", getPercentileInt(evtsPerBatchs, 20)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_25_percentile %d", getPercentileInt(evtsPerBatchs, 25)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_30_percentile %d", getPercentileInt(evtsPerBatchs, 30)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_40_percentile %d", getPercentileInt(evtsPerBatchs, 40)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_50_percentile %d", getPercentileInt(evtsPerBatchs, 50)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_60_percentile %d", getPercentileInt(evtsPerBatchs, 60)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_70_percentile %d", getPercentileInt(evtsPerBatchs, 70)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_80_percentile %d", getPercentileInt(evtsPerBatchs, 80)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_90_percentile %d", getPercentileInt(evtsPerBatchs, 90)))
-	c.String(200, fmt.Sprintf("\nevents_per_second_95_percentile %d", getPercentileInt(evtsPerBatchs, 95)))
-	evtsPerSecondMax, _ := stats.Max(evtsPerBatchs)
-	c.String(200, fmt.Sprintf("\nevents_per_second_max %d", int(evtsPerSecondMax)))
-
-	c.String(200, fmt.Sprintf("\nlast_batch_timestamp %s", res.Batches[0].BatchTime))
-
-	schedulingDelayMin, _ := stats.Min(schedulingDelays)
-	c.String(200, fmt.Sprintf("\nscheduling_delay_min %d", int(schedulingDelayMin)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_10_percentile %d", getPercentileInt(schedulingDelays, 10)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_20_percentile %d", getPercentileInt(schedulingDelays, 20)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_25_percentile %d", getPercentileInt(schedulingDelays, 25)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_30_percentile %d", getPercentileInt(schedulingDelays, 30)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_40_percentile %d", getPercentileInt(schedulingDelays, 40)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_50_percentile %d", getPercentileInt(schedulingDelays, 50)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_60_percentile %d", getPercentileInt(schedulingDelays, 60)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_70_percentile %d", getPercentileInt(schedulingDelays, 70)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_75_percentile %d", getPercentileInt(schedulingDelays, 75)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_80_percentile %d", getPercentileInt(schedulingDelays, 80)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_90_percentile %d", getPercentileInt(schedulingDelays, 90)))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_95_percentile %d", getPercentileInt(schedulingDelays, 95)))
-	schedulingDelayMax, _ := stats.Max(schedulingDelays)
-	c.String(200, fmt.Sprintf("\nscheduling_delay_max %d", int(schedulingDelayMax)))
-
-	//schedulingDelaySum, _ :=  stats.Sum(schedulingDelays)
-	schedulingDelayAvg, _ := stats.Mean(schedulingDelays) // schedulingDelaySum / float64(len(schedulingDelays))
-	c.String(200, fmt.Sprintf("\nscheduling_delay_avg %f", schedulingDelayAvg))
-
-
-	processingTimeAvg, _ := stats.Mean(processingTimes)
-
-	c.String(200, fmt.Sprintf("\nprocessing_time_avg %f", processingTimeAvg))
-	processingTimeMin, _ := stats.Min(processingTimes)
-	c.String(200, fmt.Sprintf("\nprocessing_time_min %d", int(processingTimeMin)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_10_percentile %d", getPercentileInt(processingTimes, 10)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_20_percentile %d", getPercentileInt(processingTimes, 20)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_25_percentile %d", getPercentileInt(processingTimes, 25)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_30_percentile %d", getPercentileInt(processingTimes, 30)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_40_percentile %d", getPercentileInt(processingTimes, 40)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_50_percentile %d", getPercentileInt(processingTimes, 50)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_60_percentile %d", getPercentileInt(processingTimes, 60)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_70_percentile %d", getPercentileInt(processingTimes, 70)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_80_percentile %d", getPercentileInt(processingTimes, 80)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_90_percentile %d", getPercentileInt(processingTimes, 90)))
-	c.String(200, fmt.Sprintf("\nprocessing_time_95_percentile %d", getPercentileInt(processingTimes, 95)))
-	processingTimeMax, _ := stats.Max(processingTimes)
-	c.String(200, fmt.Sprintf("\nprocessing_time_max %d", int(processingTimeMax)))
+	printPercentiles(c, evtsPerBatchs, "events_per_second")
+	printPercentiles(c, schedulingDelays, "scheduling_delay")
+	printPercentiles(c, processingTimes, "processing_time")
+	//c.String(200, fmt.Sprintf("\nlast_batch_timestamp %s", res.Batches[0].BatchTime))
 }
 
+func Csv(c *gin.Context) {
+	res, err := parseSparkDashboard()
+
+	if err != nil {
+		c.String(503, "Error")
+	}
+
+	c.String(200, "Batch Time,Input Size,Scheduling Delay,Processing Time,Total Delay")
+
+	for i:=0; i<len(res.Batches); i++ {
+		c.String(200, fmt.Sprintf("\n%s,%d,%d,%d,%d",
+			res.Batches[i].BatchTime,
+			res.Batches[i].InputSize,
+			res.Batches[i].SchedulingDelay,
+			int(res.Batches[i].ProcessingTime),
+			int(res.Batches[i].TotalDelay),
+		))
+	}
+
+}
+
+func parseSparkDashboard() (*models.Report, error) {
+	doc, _ := html.Parse(strings.NewReader(htm))
+	bn, err := GetTableBody(doc)
+	if err != nil {
+		return &models.Report{}, err
+	}
+
+	tbody, err := FindFirstChild(bn, "tbody")
+
+	if err != nil {
+		return &models.Report{}, err
+	}
+
+	res, err := browseTr(tbody)
+
+	if err == nil {
+		return &res, nil
+	} else {
+		return &models.Report{}, err
+	}
+}
+
+func printPercentiles(c *gin.Context, datas []float64, label string) {
+	avg, _ := stats.Mean(datas)
+	c.String(200, fmt.Sprintf("\n%s_avg %f", label, avg))
+	min, _ := stats.Min(datas)
+	c.String(200, fmt.Sprintf("\n%s_min %d", label, int(min)))
+	c.String(200, fmt.Sprintf("\n%s_10_percentile %d", label, getPercentileInt(datas, 10)))
+	c.String(200, fmt.Sprintf("\n%s_20_percentile %d", label, getPercentileInt(datas, 20)))
+	c.String(200, fmt.Sprintf("\n%s_25_percentile %d", label, getPercentileInt(datas, 25)))
+	c.String(200, fmt.Sprintf("\n%s_30_percentile %d", label, getPercentileInt(datas, 30)))
+	c.String(200, fmt.Sprintf("\n%s_40_percentile %d", label, getPercentileInt(datas, 40)))
+	c.String(200, fmt.Sprintf("\n%s_50_percentile %d", label, getPercentileInt(datas, 50)))
+	c.String(200, fmt.Sprintf("\n%s_60_percentile %d", label, getPercentileInt(datas, 60)))
+	c.String(200, fmt.Sprintf("\n%s_70_percentile %d", label, getPercentileInt(datas, 70)))
+	c.String(200, fmt.Sprintf("\n%s_80_percentile %d", label, getPercentileInt(datas, 80)))
+	c.String(200, fmt.Sprintf("\n%s_90_percentile %d", label, getPercentileInt(datas, 90)))
+	c.String(200, fmt.Sprintf("\n%s_95_percentile %d", label, getPercentileInt(datas, 95)))
+	max, _ := stats.Max(datas)
+	c.String(200, fmt.Sprintf("\n%s_max %d", label, int(max)))
+
+}
 
 func GetTableBody(doc *html.Node) (*html.Node, error) {
 	var res *html.Node
@@ -222,6 +216,7 @@ func browseTd(td *html.Node) (models.Batch, error) {
 				val := strings.Trim(renderNode(child.FirstChild.NextSibling.FirstChild)," ")
 				val = strings.Replace(val, "\r", "", -1)
 				val = strings.Replace(val, "\n", "", -1)
+				val = strings.Replace(val, "  ", "", -1)
 				val = strings.Trim(val, "")
 				val = strings.Replace(val, " ", "_", -1)
 
