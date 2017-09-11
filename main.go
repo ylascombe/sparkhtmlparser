@@ -10,11 +10,15 @@ func main() {
 
 	router := gin.Default()
 
-	users := router.Group("/")
+	prometheus := router.Group("/")
 	{
-		users.GET("/", analyser.ParseSparkDashboard)
+		prometheus.GET("/", analyser.ParseSparkDashboard)
 	}
 
+	csv := router.Group("/csv")
+	{
+		csv.GET("/", analyser.ParseSparkDashboard)
+	}
 	router.Run()
 
 

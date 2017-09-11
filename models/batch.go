@@ -4,6 +4,6 @@ type Batch struct {
 	BatchTime string
 	InputSize int
 	SchedulingDelay int
-	ProcessingTime float64
-	TotalDelay float64
+	ProcessingTime float32
+	TotalDelay float32
 }

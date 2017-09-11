@@ -10,6 +10,7 @@ import (
 	"htmlparser/models"
 	"strconv"
 	"github.com/gin-gonic/gin"
+	"github.com/montanaflynn/stats"
 )
 
 func ParseSparkDashboard(c *gin.Context) {
@@ -31,10 +32,77 @@ func ParseSparkDashboard(c *gin.Context) {
 		return
 	}
 
+	var schedulingDelays []float64
+	var evtsPerBatchs []float64
+	var processingTimes []float64
+
+	for i:=0; i<len(res.Batches); i++ {
+		schedulingDelays = append(schedulingDelays, float64(res.Batches[i].SchedulingDelay))
+		evtsPerBatchs = append(evtsPerBatchs, float64(res.Batches[i].InputSize))
+		processingTimes = append(processingTimes, float64(res.Batches[i].ProcessingTime))
+	}
+
 	//body := renderNode(tbody)
 	//fmt.Println(body)
 	c.String(200, fmt.Sprintf("\nevents_per_second_avg %d", res.EventsPerSecondAvg))
+	evtsPerSecondMin, _ := stats.Min(evtsPerBatchs)
+	c.String(200, fmt.Sprintf("\nevents_per_second_min %d", int(evtsPerSecondMin)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_10_percentile %d", getPercentileInt(evtsPerBatchs, 10)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_20_percentile %d", getPercentileInt(evtsPerBatchs, 20)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_25_percentile %d", getPercentileInt(evtsPerBatchs, 25)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_30_percentile %d", getPercentileInt(evtsPerBatchs, 30)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_40_percentile %d", getPercentileInt(evtsPerBatchs, 40)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_50_percentile %d", getPercentileInt(evtsPerBatchs, 50)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_60_percentile %d", getPercentileInt(evtsPerBatchs, 60)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_70_percentile %d", getPercentileInt(evtsPerBatchs, 70)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_80_percentile %d", getPercentileInt(evtsPerBatchs, 80)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_90_percentile %d", getPercentileInt(evtsPerBatchs, 90)))
+	c.String(200, fmt.Sprintf("\nevents_per_second_95_percentile %d", getPercentileInt(evtsPerBatchs, 95)))
+	evtsPerSecondMax, _ := stats.Max(evtsPerBatchs)
+	c.String(200, fmt.Sprintf("\nevents_per_second_max %d", int(evtsPerSecondMax)))
+
 	c.String(200, fmt.Sprintf("\nlast_batch_timestamp %s", res.Batches[0].BatchTime))
+
+	schedulingDelayMin, _ := stats.Min(schedulingDelays)
+	c.String(200, fmt.Sprintf("\nscheduling_delay_min %d", int(schedulingDelayMin)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_10_percentile %d", getPercentileInt(schedulingDelays, 10)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_20_percentile %d", getPercentileInt(schedulingDelays, 20)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_25_percentile %d", getPercentileInt(schedulingDelays, 25)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_30_percentile %d", getPercentileInt(schedulingDelays, 30)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_40_percentile %d", getPercentileInt(schedulingDelays, 40)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_50_percentile %d", getPercentileInt(schedulingDelays, 50)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_60_percentile %d", getPercentileInt(schedulingDelays, 60)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_70_percentile %d", getPercentileInt(schedulingDelays, 70)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_75_percentile %d", getPercentileInt(schedulingDelays, 75)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_80_percentile %d", getPercentileInt(schedulingDelays, 80)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_90_percentile %d", getPercentileInt(schedulingDelays, 90)))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_95_percentile %d", getPercentileInt(schedulingDelays, 95)))
+	schedulingDelayMax, _ := stats.Max(schedulingDelays)
+	c.String(200, fmt.Sprintf("\nscheduling_delay_max %d", int(schedulingDelayMax)))
+
+	//schedulingDelaySum, _ :=  stats.Sum(schedulingDelays)
+	schedulingDelayAvg, _ := stats.Mean(schedulingDelays) // schedulingDelaySum / float64(len(schedulingDelays))
+	c.String(200, fmt.Sprintf("\nscheduling_delay_avg %f", schedulingDelayAvg))
+
+
+	processingTimeAvg, _ := stats.Mean(processingTimes)
+
+	c.String(200, fmt.Sprintf("\nprocessing_time_avg %f", processingTimeAvg))
+	processingTimeMin, _ := stats.Min(processingTimes)
+	c.String(200, fmt.Sprintf("\nprocessing_time_min %d", int(processingTimeMin)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_10_percentile %d", getPercentileInt(processingTimes, 10)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_20_percentile %d", getPercentileInt(processingTimes, 20)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_25_percentile %d", getPercentileInt(processingTimes, 25)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_30_percentile %d", getPercentileInt(processingTimes, 30)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_40_percentile %d", getPercentileInt(processingTimes, 40)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_50_percentile %d", getPercentileInt(processingTimes, 50)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_60_percentile %d", getPercentileInt(processingTimes, 60)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_70_percentile %d", getPercentileInt(processingTimes, 70)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_80_percentile %d", getPercentileInt(processingTimes, 80)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_90_percentile %d", getPercentileInt(processingTimes, 90)))
+	c.String(200, fmt.Sprintf("\nprocessing_time_95_percentile %d", getPercentileInt(processingTimes, 95)))
+	processingTimeMax, _ := stats.Max(processingTimes)
+	c.String(200, fmt.Sprintf("\nprocessing_time_max %d", int(processingTimeMax)))
 }
 
 
@@ -98,7 +166,8 @@ func browseTr(tr *html.Node) (models.Report, error) {
 	var batches []models.Batch
 
 	evtsNumber := 0
-	processings := 0.0
+	processings := float32(0.0)
+	schedulingDelays := float32(0.0)
 
 	for child := tr.FirstChild; child != nil;  child = child.NextSibling  {
 
@@ -119,16 +188,19 @@ func browseTr(tr *html.Node) (models.Report, error) {
 
 			processings += batch.ProcessingTime
 			evtsNumber += batch.InputSize
+			schedulingDelays += float32(batch.SchedulingDelay)
 			lignes++
 			batch = models.Batch{}
 		}
 	}
 
+	report := models.Report{
+		Batches:batches,
+		EventsPerSecondAvg: int(float32(evtsNumber) / processings),
+		RowCount: lignes+1,
 
-	report := models.Report{Batches:batches, EventsPerSecondAvg: int(float64(evtsNumber) / processings), RowCount: lignes+1}
-
+	}
 	//fmt.Println("\nevents_per_second_avg ", float64(evtsNumber) / processings)
-
 	return report, nil
 }
 
@@ -173,17 +245,14 @@ func browseTd(td *html.Node) (models.Batch, error) {
 				val = strings.Replace(val, "s", "", 1)
 				val, _ := strconv.ParseFloat(val, 4)
 
-				batch.ProcessingTime = val
+				batch.ProcessingTime = float32(val)
 			case 4:
 				val = strings.Replace(val, "s", "", 1)
 				val, _ := strconv.ParseFloat(val, 4)
 
-				batch.TotalDelay = val
+				batch.TotalDelay = float32(val)
 			}
 			cols++
-		} else {
-
-			fmt.Println("lost", child.Attr)
 		}
 	}
 	return batch, nil
@@ -196,7 +265,14 @@ func renderNode(n *html.Node) string {
 	return buf.String()
 }
 
-
+func getPercentileFloat32(array []float64, percent int) float32 {
+	percentile, _ := stats.Percentile(array, float64(percent))
+	return float32(percentile)
+}
+func getPercentileInt(array []float64, percent int) int {
+	percentile, _ := stats.Percentile(array, float64(percent))
+	return int(percentile)
+}
 
 const htm = `<!DOCTYPE html>
 <html><head>
