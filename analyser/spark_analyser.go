@@ -1,24 +1,30 @@
 package analyser
 
 import (
-	"fmt"
-	"errors"
-	"strings"
 	"bytes"
-	"io"
-	"golang.org/x/net/html"
+	"errors"
+	"fmt"
+	"htmlparser/httpclient"
 	"htmlparser/models"
+	"io"
+	"os"
 	"strconv"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/montanaflynn/stats"
-	"net/http"
-	"io/ioutil"
-	"os"
+	"golang.org/x/net/html"
 )
 
 func Prometheus(c *gin.Context) {
 
-	res, err := parseSparkDashboard()
+	url := os.Getenv("SPARK_DASHBOARD_URL")
+	content, err := httpclient.RequestPage(url, "spark", "spark")
+
+	if err != nil {
+		c.String(503, "error when trying to request spark")
+	}
+	res, err := parseSparkDashboard(content)
 
 	if err != nil {
 		c.String(503, "Error ")
@@ -27,7 +33,7 @@ func Prometheus(c *gin.Context) {
 	var evtsPerBatchs []float64
 	var processingTimes []float64
 
-	for i:=0; i<len(res.Batches); i++ {
+	for i := 0; i < len(res.Batches); i++ {
 		schedulingDelays = append(schedulingDelays, float64(res.Batches[i].SchedulingDelay))
 		evtsPerBatchs = append(evtsPerBatchs, float64(res.Batches[i].InputSize))
 		processingTimes = append(processingTimes, float64(res.Batches[i].ProcessingTime))
@@ -39,7 +45,15 @@ func Prometheus(c *gin.Context) {
 }
 
 func Csv(c *gin.Context) {
-	res, err := parseSparkDashboard()
+
+	url := os.Getenv("SPARK_DASHBOARD_URL")
+	content, err := httpclient.RequestPage(url, "spark", "spark")
+
+	if err != nil {
+		c.String(503, "error when trying to request spark")
+	}
+
+	res, err := parseSparkDashboard(content)
 
 	if err != nil {
 		c.String(503, "Error")
@@ -47,7 +61,7 @@ func Csv(c *gin.Context) {
 
 	c.String(200, "Batch Time,Input Size,Scheduling Delay,Processing Time,Total Delay")
 
-	for i:=0; i<len(res.Batches); i++ {
+	for i := 0; i < len(res.Batches); i++ {
 		c.String(200, fmt.Sprintf("\n%s,%d,%d,%v,%v",
 			res.Batches[i].BatchTime,
 			res.Batches[i].InputSize,
@@ -59,19 +73,9 @@ func Csv(c *gin.Context) {
 
 }
 
-func parseSparkDashboard() (*models.Report, error) {
+func parseSparkDashboard(content string) (*models.Report, error) {
 
-	url := os.Getenv("SPARK_DASHBOARD_URL")
-	resp, err := http.Get(url)
-
-	if err != nil {
-		return &models.Report{}, err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-
-	doc, _ := html.Parse(strings.NewReader(string(body)))
+	doc, _ := html.Parse(strings.NewReader(content))
 	bn, err := GetTableBody(doc)
 	if err != nil {
 		return &models.Report{}, err
@@ -120,7 +124,7 @@ func GetTableBody(doc *html.Node) (*html.Node, error) {
 	f = func(node *html.Node) {
 		if node.Type == html.ElementNode && node.Data == "table" {
 
-			for i:=0 ; i< len(node.Attr); i++ {
+			for i := 0; i < len(node.Attr); i++ {
 				if node.Attr[i].Key == "id" && node.Attr[i].Val == "completed-batches-table" {
 					res = node
 				}
@@ -166,7 +170,6 @@ func FindFirstChild(doc *html.Node, tagName string) (*html.Node, error) {
 	return nil, errors.New("Missing <" + tagName + "> in the node tree")
 }
 
-
 func browseTr(tr *html.Node) (models.Report, error) {
 
 	lignes := -1
@@ -176,7 +179,7 @@ func browseTr(tr *html.Node) (models.Report, error) {
 	processings := float32(0.0)
 	schedulingDelays := float32(0.0)
 
-	for child := tr.FirstChild; child != nil;  child = child.NextSibling  {
+	for child := tr.FirstChild; child != nil; child = child.NextSibling {
 
 		if child.Data == "tr" {
 
@@ -202,10 +205,9 @@ func browseTr(tr *html.Node) (models.Report, error) {
 	}
 
 	report := models.Report{
-		Batches:batches,
+		Batches:            batches,
 		EventsPerSecondAvg: int(float32(evtsNumber) / processings),
-		RowCount: lignes+1,
-
+		RowCount:           lignes + 1,
 	}
 	return report, nil
 }
@@ -216,16 +218,16 @@ func browseTd(td *html.Node) (models.Batch, error) {
 
 	for child := td; child != nil; child = child.NextSibling {
 
-		if child.Data == "td"  {
+		if child.Data == "td" {
 
-			val := strings.Trim(renderNode(child.FirstChild)," ")
+			val := strings.Trim(renderNode(child.FirstChild), " ")
 			val = strings.Replace(val, " ", "", -1)
 			val = strings.Replace(val, "\n", "", -1)
 			val = strings.Replace(val, "\r", "", -1)
 
 			switch cols {
 			case 0:
-				val := strings.Trim(renderNode(child.FirstChild.NextSibling.FirstChild)," ")
+				val := strings.Trim(renderNode(child.FirstChild.NextSibling.FirstChild), " ")
 				val = strings.Replace(val, "\r", "", -1)
 				val = strings.Replace(val, "\n", "", -1)
 				val = strings.Replace(val, "  ", "", -1)
@@ -239,14 +241,14 @@ func browseTd(td *html.Node) (models.Batch, error) {
 
 				batch.InputSize = val
 			case 2:
-				if strings.Index(val, "ms") >0 {
+				if strings.Index(val, "ms") > 0 {
 					val = strings.Replace(val, "ms", "", 1)
 					val, _ := strconv.Atoi(val)
 					batch.SchedulingDelay = val
 				} else {
 					val = strings.Replace(val, "s", "", 1)
 					val, _ := strconv.Atoi(val)
-					batch.SchedulingDelay = (val *1000)
+					batch.SchedulingDelay = (val * 1000)
 				}
 			case 3:
 				val = strings.Replace(val, "s", "", 1)
