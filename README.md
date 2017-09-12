@@ -1,5 +1,7 @@
 GO code to request spark dashboard page, parse it and extract stats of 
-running apps in a prometheus format and CSV too.
+running apps in a prometheus format and CSV too : the main objective is 
+to compensate the lack of completude of spark 1.5.1 API about running 
+apps stats.
 
 # Usage
 
