@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"htmlparser/httpclient"
 	"htmlparser/models"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 
@@ -18,12 +16,7 @@ import (
 
 func Prometheus(c *gin.Context) {
 
-	url := os.Getenv("SPARK_DASHBOARD_URL")
-	content, err := httpclient.RequestPage(url, "spark", "spark")
-
-	if err != nil {
-		c.String(503, "error when trying to request spark")
-	}
+	content := c.MustGet("htmlContent").(string)
 	res, err := parseSparkDashboard(content)
 
 	if err != nil {
@@ -58,13 +51,7 @@ func Prometheus(c *gin.Context) {
 
 func Csv(c *gin.Context) {
 
-	url := os.Getenv("SPARK_DASHBOARD_URL")
-	content, err := httpclient.RequestPage(url, "spark", "spark")
-
-	if err != nil {
-		c.String(503, "error when trying to request spark")
-	}
-
+	content := c.MustGet("htmlContent").(string)
 	res, err := parseSparkDashboard(content)
 
 	if err != nil {
@@ -129,7 +116,6 @@ func printPercentiles(c *gin.Context, datas []float64, label string, coeff int) 
 	max, _ := stats.Max(datas)
 	max = max / float64(coeff)
 	c.String(200, fmt.Sprintf("\n%s_max %v", label, max))
-
 }
 
 func GetTableBody(doc *html.Node) (*html.Node, error) {
