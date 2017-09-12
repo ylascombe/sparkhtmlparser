@@ -32,10 +32,15 @@ func main() {
 		prometheus.GET("/", analyser.Prometheus)
 	}
 
+	metrics := router.Group("/metrics")
+	{
+		metrics.GET("/", analyser.Prometheus)
+	}
+
 	csv := router.Group("/csv")
 	{
 		csv.GET("/", analyser.Csv)
 	}
-	router.Run()
+	router.Run(":5000")
 
 }
