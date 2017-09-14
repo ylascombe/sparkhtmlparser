@@ -4,7 +4,7 @@ GOLINT = $(BIN)/golint
 
 $(BIN)/golint: | $(BASE)
 
-default: vet lintall testall coverstat build
+default: vet lintall testall coverstat build package
 
 build:
 	@go get
@@ -64,3 +64,8 @@ tests:
 
 debug_tools:
 	go get github.com/derekparker/delve/cmd/dlv
+
+package:
+	@echo "Packaging spark html parser into a single binary file..."
+	@CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-w' .
+	@echo "Packaging done !"
