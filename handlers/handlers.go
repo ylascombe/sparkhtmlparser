@@ -105,3 +105,18 @@ func getPercentile(array []float64, percent int, coeff int) float64 {
 	percentile, _ := stats.Percentile(array, float64(percent))
 	return percentile / float64(coeff)
 }
+
+func FindPage(c *gin.Context) {
+	content, err := httpclient.RequestSparkDashboard()
+
+	if err != nil {
+		c.Error(errors.New("Cannot request spark dashboard"))
+	}
+	url, err := analyser.FindWorkerForApp("colis360", content)
+
+	if err != nil {
+		c.String(503, "Error")
+	}
+	fmt.Println(url)
+	return
+}

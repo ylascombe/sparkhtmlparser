@@ -9,7 +9,8 @@ import (
 func main() {
 
 	router := gin.Default()
-	router.StaticFS("/", http.Dir("myApp"))
+	router.StaticFS("/myApp", http.Dir("myApp"))
+	router.StaticFS("/mainPage", http.Dir("mainPage"))
 
 	// Listen and serve on 0.0.0.0:8080
 	router.Run(":8088")

@@ -25,7 +25,8 @@ run a mock page by running a second server described in mock folder
 ````
 cd mock
 go run main.go
-export SPARK_DASHBOARD_URL=http://localhost:8088/appStreamingStatistics.html
+export SPARK_DASHBOARD_URL=http://localhost:8088/myApp/appStreamingStatistics.html
+export SPARK_DASHBOARD_URL=http://localhost:8088/mainPage/mainpage.html
 cd ..
 make run
 ````

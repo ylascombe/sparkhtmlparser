@@ -7,12 +7,14 @@ import (
 	"golang.org/x/net/html"
 
 	"fmt"
+	"io/ioutil"
+	"os"
 )
 
-func TestGetTableBody(t *testing.T) {
+func TestFindTagWithId(t *testing.T) {
 
 	doc, _ := html.Parse(strings.NewReader(HTML1))
-	res, err := GetTableBody(doc)
+	res, err := FindTagWithId(doc, "table", "completed-batches-table")
 
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
@@ -23,7 +25,7 @@ func TestGetTableBody(t *testing.T) {
 
 func TestFindFirstChild(t *testing.T) {
 	doc, _ := html.Parse(strings.NewReader(HTML1))
-	res, _ := GetTableBody(doc)
+	res, _ := FindTagWithId(doc, "table", "completed-batches-table")
 
 	res, err := FindFirstChild(res, "td")
 
@@ -34,6 +36,69 @@ func TestFindFirstChild(t *testing.T) {
 	assert.Equal(t, "batch-1504876700000", res.Attr[0].Val)
 }
 
+func TestFindTagWithContent(t *testing.T) {
+
+	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
+	doc, _ := html.Parse(strings.NewReader(pageContent))
+
+	node, err := FindTagWithContent(doc, "h4", "<h4> Running Applications </h4>")
+
+	assert.Nil(t, err)
+	assert.NotNil(t, node)
+
+	assert.Equal(t, " Running Applications ", node.FirstChild.Data)
+}
+
+
+func TestRenderNode(t *testing.T) {
+
+	doc, _ := html.Parse(strings.NewReader(HTML1))
+	td, _ := FindTagWithId(doc, "td", "batch-1504876700000")
+
+	res := renderNode(td)
+
+	assert.NotNil(t, res)
+
+	expected := "<td id=\"batch-1504876700000\" sorttable_customkey=\"1504876700000\">\n<a href=\"http://cops-fco-spark-worker-a-11.cloud.alt:4041/streaming/batch?id=1504876700000\">\n2017/09/08 15:18:20\n</a>\n</td>"
+	assert.Equal(t, expected, res)
+}
+
+func TestFindWorkerForApp(t *testing.T) {
+
+	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
+
+	res, err := FindWorkerForApp("colis360", pageContent)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+}
+
+// TODO test following functions
+// ParseSparkDashboard
+// browseTr
+// browseTd
+
+func TestReadFile(t *testing.T) {
+	pageContent, err := readFile("/mock/example.test")
+
+	expected := "Example file to test readContent function\n\nThere are also new lines !\n"
+	assert.Nil(t, err)
+	assert.NotNil(t, pageContent)
+	assert.Equal(t, expected, pageContent)
+
+}
+func readFile(pathInProject string) (string, error) {
+	pwd, _ := os.Getwd()
+	pwd = strings.Replace(pwd, "/analyser", "", 1)
+
+	path := pwd + pathInProject
+	data, err := ioutil.ReadFile(path)
+
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
 
 const HTML1 = `<!DOCTYPE html>
 <html>
