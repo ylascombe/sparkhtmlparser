@@ -13,9 +13,13 @@ import (
 
 func TestFindTagWithId(t *testing.T) {
 
+	// arrange
 	doc, _ := html.Parse(strings.NewReader(HTML1))
+
+	// act
 	res, err := FindTagWithId(doc, "table", "completed-batches-table")
 
+	// assert
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 	fmt.Println(res)
@@ -24,11 +28,14 @@ func TestFindTagWithId(t *testing.T) {
 }
 
 func TestFindFirstChild(t *testing.T) {
+	// arrange
 	doc, _ := html.Parse(strings.NewReader(HTML1))
 	res, _ := FindTagWithId(doc, "table", "completed-batches-table")
 
+	// act
 	res, err := FindFirstChild(res, "td")
 
+	// assert
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 
@@ -38,11 +45,14 @@ func TestFindFirstChild(t *testing.T) {
 
 func TestFindTagWithContent(t *testing.T) {
 
+	// arrange
 	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
 	doc, _ := html.Parse(strings.NewReader(pageContent))
 
+	// act
 	node, err := FindTagWithContent(doc, "h4", "<h4> Running Applications </h4>")
 
+	// assert
 	assert.Nil(t, err)
 	assert.NotNil(t, node)
 
@@ -52,25 +62,126 @@ func TestFindTagWithContent(t *testing.T) {
 
 func TestRenderNode(t *testing.T) {
 
+	// arrange
 	doc, _ := html.Parse(strings.NewReader(HTML1))
 	td, _ := FindTagWithId(doc, "td", "batch-1504876700000")
 
+	// act
 	res := renderNode(td)
 
+	// assert
 	assert.NotNil(t, res)
 
 	expected := "<td id=\"batch-1504876700000\" sorttable_customkey=\"1504876700000\">\n<a href=\"http://cops-fco-spark-worker-a-11.cloud.alt:4041/streaming/batch?id=1504876700000\">\n2017/09/08 15:18:20\n</a>\n</td>"
 	assert.Equal(t, expected, res)
 }
 
-func TestFindWorkerForApp(t *testing.T) {
+func TestFindWorkerLinkForApp(t *testing.T) {
 
+	// arrange
 	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
 
-	res, err := FindWorkerForApp("colis360", pageContent)
+	// act
+	res, err := FindWorkerLinkForApp("colis360", pageContent)
 
+	// assert
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
+	assert.Equal(t, "http://COPS-FCO-spark-worker-a-09.cloud.alt:4041", res)
+}
+
+func TestFindWorkerLinkForAppWhenNotFound(t *testing.T) {
+
+	// arrange
+	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
+	appName := "do_not_exist"
+
+	// act
+	res, err := FindWorkerLinkForApp(appName, pageContent)
+
+	// assert
+	assert.NotNil(t, err)
+	assert.Equal(t, "", res)
+	assert.Equal(t, "Link not found for application " + appName, err.Error())
+}
+
+func TestGenericTRBrowser(t *testing.T) {
+	// arrange
+	content, _ := readFile("/mock/mainPage/mainpage.html")
+	doc, _ := html.Parse(strings.NewReader(content))
+	node, _ := FindTagWithContent(doc, "h4", "<h4> Running Applications </h4>")
+
+	table := node.NextSibling.NextSibling
+
+	tbody, err := FindFirstChild(table, "tbody")
+
+	// act
+	res, err := genericTRBrowser(tbody)
+
+	// assert
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+
+	assert.Equal(t, 3, len(*res))
+	line := (*res)[0]
+	assert.Equal(t, 8, len(line.Cells))
+	// cells value will be tested on testGenericTDBrowser
+}
+
+
+func TestGenericTDBrowser(t *testing.T) {
+	// arrange
+	content := `<html><body><table><tr>
+      <td>
+        <a href="app?appId=app-20170912104309-5902">app-20170912104309-5902</a>
+        <form action="app/kill/" method="POST" style="display:inline">
+        <input type="hidden" name="id" value="app-20170912104309-5902"/>
+        <input type="hidden" name="terminate" value="true"/>
+        <a href="#" onclick="if (window.confirm('Are you sure you want to kill application app-20170912104309-5902 ?')) { this.parentNode.submit(); return true; } else { return false; }" class="kill-link">(kill)</a>
+      </form>
+      </td>
+      <td>
+        <a href="http://COPS-FCO-spark-worker-a-09.cloud.alt:4046">ftliv</a>
+      </td>
+      <td>
+        3
+      </td>
+      <td sorttable_customkey="1024">
+        1024.0 MB
+      </td>
+      <td>2017/09/12 10:43:09</td>
+      <td>spark</td>
+      <td>RUNNING</td>
+      <td>24.7 h</td>
+    </tr></table></body></html>`
+
+	html, _ := html.Parse(strings.NewReader(content))
+	fmt.Println(html)
+
+	head := html.FirstChild.FirstChild
+	body := head.NextSibling
+	table := body.FirstChild
+	tbody := table.FirstChild
+	tr := tbody.FirstChild
+	td := tr.FirstChild
+
+	// act
+	res, err := genericTDBrowser(td)
+
+	// assert
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+
+	line := (*res).Cells
+	assert.Equal(t, 8, len(line))
+	assert.Equal(t, `<a href="app?appId=app-20170912104309-5902">app-20170912104309-5902</a>`, line[0])
+	assert.Equal(t, `<a href="http://COPS-FCO-spark-worker-a-09.cloud.alt:4046">ftliv</a>`, line[1])
+	assert.Equal(t, "3", line[2])
+	assert.Equal(t, "1024.0 MB", line[3])
+	assert.Equal(t, "2017/09/12 10:43:09", line[4])
+	assert.Equal(t, "spark", line[5])
+	assert.Equal(t, "RUNNING", line[6])
+	assert.Equal(t, "24.7 h", line[7])
 }
 
 // TODO test following functions
@@ -79,9 +190,13 @@ func TestFindWorkerForApp(t *testing.T) {
 // browseTd
 
 func TestReadFile(t *testing.T) {
+	// arrange
+	expected := "Example file to test readContent function\n\nThere are also new lines !\n"
+
+	// act
 	pageContent, err := readFile("/mock/example.test")
 
-	expected := "Example file to test readContent function\n\nThere are also new lines !\n"
+	// assert
 	assert.Nil(t, err)
 	assert.NotNil(t, pageContent)
 	assert.Equal(t, expected, pageContent)

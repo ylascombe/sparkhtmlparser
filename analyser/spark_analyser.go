@@ -146,6 +146,34 @@ func browseTr(tr *html.Node) (*models.Report, error) {
 	return &report, nil
 }
 
+func genericTRBrowser(tr *html.Node) (*[]models.ArrayLine, error) {
+
+	var lines []models.ArrayLine
+
+	for child := tr.FirstChild; child != nil; child = child.NextSibling {
+
+		if child.Data == "tr" {
+
+			td, err := FindFirstChild(child, "td")
+
+			if err != nil {
+				return nil, err
+			}
+
+			line, err := genericTDBrowser(td)
+
+			if err != nil {
+				return nil, err
+			}
+			lines = append(lines, *line)
+
+			line = &models.ArrayLine{}
+		}
+	}
+
+	return &lines, nil
+}
+
 func browseTd(td *html.Node) (models.Batch, error) {
 	cols := 0
 	batch := models.Batch{}
@@ -201,15 +229,43 @@ func browseTd(td *html.Node) (models.Batch, error) {
 	return batch, nil
 }
 
-func renderNode(n *html.Node) string {
-	var buf bytes.Buffer
-	w := io.Writer(&buf)
-	html.Render(w, n)
-	return buf.String()
+func genericTDBrowser(td *html.Node) (*models.ArrayLine, error) {
+	cols := 0
+	line := models.ArrayLine{}
+
+	for child := td; child != nil; child = child.NextSibling {
+
+		if child.Data == "td" {
+
+			tdChild := child.FirstChild
+			val := strings.Trim(renderNode(tdChild), " ")
+
+			if tdChild.NextSibling != nil && tdChild.NextSibling.Data == "a" {
+				val = strings.Trim(renderNode(tdChild.NextSibling), " ")
+			}
+			val = strings.Replace(val, "  ", "", -1)
+			val = strings.Replace(val, "\n", "", -1)
+			val = strings.Replace(val, "\r", "", -1)
+
+			line.Cells = append(line.Cells, val)
+			cols++
+		}
+	}
+	return &line, nil
+}
+
+func renderNode(node *html.Node) string {
+	var buffer bytes.Buffer
+	writer := io.Writer(&buffer)
+
+	if node != nil {
+		html.Render(writer, node)
+	}
+	return buffer.String()
 }
 
 
-func FindWorkerForApp(appName string, content string) (string, error) {
+func FindWorkerLinkForApp(appName string, content string) (string, error) {
 
 	doc, _ := html.Parse(strings.NewReader(content))
 	node, err := FindTagWithContent(doc, "h4", "<h4> Running Applications </h4>")
@@ -226,8 +282,25 @@ func FindWorkerForApp(appName string, content string) (string, error) {
 
 	tbody, err := FindFirstChild(table, "tbody")
 
-	fmt.Println("next ")
-	fmt.Println(renderNode(tbody))
+	res, err := genericTRBrowser(tbody)
 
-	return "", nil
+	link := ""
+
+	for l :=0; l < len(*res); l++ {
+		line := (*res)[l]
+
+		// app name is contained in the second index of cells
+		if strings.Contains(line.Cells[1], appName) {
+			start := strings.IndexAny(line.Cells[1], "href=") + len("href=\"")
+			end := strings.IndexAny(line.Cells[1], ">")
+			link = line.Cells[1][start:end-1]
+			break
+		}
+	}
+
+	if link != "" {
+		return link, nil
+	} else {
+		return "", errors.New(fmt.Sprintf("Link not found for application %s", appName))
+	}
 }
