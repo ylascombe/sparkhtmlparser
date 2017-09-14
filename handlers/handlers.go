@@ -7,11 +7,26 @@ import (
 	"htmlparser/analyser"
 	"htmlparser/httpclient"
 	"errors"
+	"os"
 )
 
 func Prometheus(c *gin.Context) {
 
 	content, err := httpclient.RequestSparkDashboard()
+
+	if err != nil {
+		c.Error(errors.New("Cannot request spark dashboard"))
+	}
+	url, err := analyser.FindWorkerLinkForApp("colis360", content)
+
+	if err != nil {
+		c.String(503, "Cannot find app url in spark main dashboard")
+	}
+
+	// Now, request spark worker dashboard
+	login := os.Getenv("SPARK_LOGIN")
+	pass := os.Getenv("SPARK_PASSWORD")
+	content, err = httpclient.RequestPage(url, login, pass)
 
 	if err != nil {
 		c.Error(errors.New("Cannot request spark dashboard"))
@@ -57,7 +72,20 @@ func Csv(c *gin.Context) {
 	if err != nil {
 		c.Error(errors.New("Cannot request spark dashboard"))
 	}
+	url, err := analyser.FindWorkerLinkForApp("colis360", content)
 
+	if err != nil {
+		c.String(503, "Cannot find app url in spark main dashboard")
+	}
+
+	// Now, request spark worker dashboard
+	login := os.Getenv("SPARK_LOGIN")
+	pass := os.Getenv("SPARK_PASSWORD")
+	content, err = httpclient.RequestPage(url, login, pass)
+
+	if err != nil {
+		c.Error(errors.New("Cannot request spark dashboard"))
+	}
 	res, err := analyser.ParseSparkDashboard(content)
 
 	if err != nil {
@@ -106,13 +134,14 @@ func getPercentile(array []float64, percent int, coeff int) float64 {
 	return percentile / float64(coeff)
 }
 
+// TODO DEPRECATED to remove after validation
 func FindPage(c *gin.Context) {
 	content, err := httpclient.RequestSparkDashboard()
 
 	if err != nil {
 		c.Error(errors.New("Cannot request spark dashboard"))
 	}
-	url, err := analyser.FindWorkerForApp("colis360", content)
+	url, err := analyser.FindWorkerLinkForApp("colis360", content)
 
 	if err != nil {
 		c.String(503, "Error")
