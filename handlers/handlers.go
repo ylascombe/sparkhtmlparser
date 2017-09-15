@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"github.com/montanaflynn/stats"
+	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"htmlparser/analyser"
 	"htmlparser/httpclient"
-	"errors"
 	"os"
+
+	"github.com/gin-gonic/gin"
+	"github.com/montanaflynn/stats"
 )
 
 func Prometheus(c *gin.Context) {
@@ -17,12 +18,16 @@ func Prometheus(c *gin.Context) {
 	if err != nil {
 		c.Error(errors.New("Cannot request spark dashboard"))
 	}
-	url, err := analyser.FindWorkerLinkForApp("colis360", content)
+	appName := os.Getenv("SPARK_APP")
+	url, err := analyser.FindWorkerLinkForApp(appName, content)
 
 	if err != nil {
 		c.String(503, "Cannot find app url in spark main dashboard")
 	}
 
+	url = url + "/streaming/"
+
+	fmt.Println("Worker url found for app : ", appName, url)
 	// Now, request spark worker dashboard
 	login := os.Getenv("SPARK_LOGIN")
 	pass := os.Getenv("SPARK_PASSWORD")
@@ -34,7 +39,7 @@ func Prometheus(c *gin.Context) {
 	res, err := analyser.ParseSparkDashboard(content)
 
 	if err != nil {
-		c.String(503, "Error ")
+		c.String(503, "Error while parsing spark worker dashboard")
 	}
 	var schedulingDelays []float64
 	var evtsPerBatchs []float64
@@ -63,8 +68,6 @@ func Prometheus(c *gin.Context) {
 	c.String(200, "\n\t")
 }
 
-
-
 func Csv(c *gin.Context) {
 
 	content, err := httpclient.RequestSparkDashboard()
@@ -72,11 +75,16 @@ func Csv(c *gin.Context) {
 	if err != nil {
 		c.Error(errors.New("Cannot request spark dashboard"))
 	}
-	url, err := analyser.FindWorkerLinkForApp("colis360", content)
+	appName := os.Getenv("SPARK_APP")
+	url, err := analyser.FindWorkerLinkForApp(appName, content)
 
 	if err != nil {
 		c.String(503, "Cannot find app url in spark main dashboard")
 	}
+
+	url = url + "/streaming/"
+
+	fmt.Println("Worker url found for app : ", appName, url)
 
 	// Now, request spark worker dashboard
 	login := os.Getenv("SPARK_LOGIN")
@@ -138,6 +146,7 @@ func getPercentile(array []float64, percent int, coeff int) float64 {
 func FindPage(c *gin.Context) {
 	content, err := httpclient.RequestSparkDashboard()
 
+	fmt.Println(content)
 	if err != nil {
 		c.Error(errors.New("Cannot request spark dashboard"))
 	}

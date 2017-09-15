@@ -11,6 +11,7 @@ Example :
 export SPARK_DASHBOARD_URL="http://<spark_url>/"
 export SPARK_LOGIN=login
 export SPARK_PASSWORD=pass
+export SPARK_APP=colis360
 make run
 ````
 
