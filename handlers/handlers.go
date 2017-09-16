@@ -101,6 +101,7 @@ func getPercentile(array []float64, percent int, coeff int) float64 {
 }
 
 func getMetrics() (*models.Report, error) {
+
 	content, err := httpclient.RequestActiveSparkMasterContent()
 
 	if err != nil {
@@ -109,6 +110,7 @@ func getMetrics() (*models.Report, error) {
 
 	appName := os.Getenv("SPARK_APP")
 	url, err := analyser.FindWorkerLinkForApp(appName, *content)
+	url = url + "/streaming/"
 
 	fmt.Println("Link for app name:", url)
 
