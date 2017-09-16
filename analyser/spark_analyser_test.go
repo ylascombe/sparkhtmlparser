@@ -46,7 +46,7 @@ func TestFindFirstChild(t *testing.T) {
 func TestFindTagWithContent(t *testing.T) {
 
 	// arrange
-	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
+	pageContent, _ := readFile("/mock/mainPage/sparkMasterActive.html")
 	doc, _ := html.Parse(strings.NewReader(pageContent))
 
 	// act
@@ -79,7 +79,7 @@ func TestRenderNode(t *testing.T) {
 func TestFindWorkerLinkForApp(t *testing.T) {
 
 	// arrange
-	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
+	pageContent, _ := readFile("/mock/mainPage/sparkMasterActive.html")
 
 	// act
 	res, err := FindWorkerLinkForApp("colis360", pageContent)
@@ -87,13 +87,13 @@ func TestFindWorkerLinkForApp(t *testing.T) {
 	// assert
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
-	assert.Equal(t, "http://COPS-FCO-spark-worker-a-09.cloud.alt:4041", res)
+	assert.Equal(t, "http://localhost:8088/worker9/main.html", res)
 }
 
 func TestFindWorkerLinkForAppWhenNotFound(t *testing.T) {
 
 	// arrange
-	pageContent, _ := readFile("/mock/mainPage/mainpage.html")
+	pageContent, _ := readFile("/mock/mainPage/sparkMasterActive.html")
 	appName := "do_not_exist"
 
 	// act
@@ -107,7 +107,7 @@ func TestFindWorkerLinkForAppWhenNotFound(t *testing.T) {
 
 func TestGenericTRBrowser(t *testing.T) {
 	// arrange
-	content, _ := readFile("/mock/mainPage/mainpage.html")
+	content, _ := readFile("/mock/mainPage/sparkMasterActive.html")
 	doc, _ := html.Parse(strings.NewReader(content))
 	node, _ := FindTagWithContent(doc, "h4", "<h4> Running Applications </h4>")
 
@@ -182,6 +182,29 @@ func TestGenericTDBrowser(t *testing.T) {
 	assert.Equal(t, "spark", line[5])
 	assert.Equal(t, "RUNNING", line[6])
 	assert.Equal(t, "24.7 h", line[7])
+}
+
+func TestIsActiveSparkMasterWhenOK(t *testing.T) {
+	// arrange
+	content, _ := readFile("/mock/mainPage/sparkMasterActive.html")
+
+	// act
+	res := IsActiveSparkMaster(content)
+
+	// assert
+	assert.True(t, res)
+}
+
+
+func TestIsActiveSparkMasterWhenKO(t *testing.T) {
+	// arrange
+	content, _ := readFile("/mock/myApp/appStreamingStatistics.html")
+
+	// act
+	res := IsActiveSparkMaster(content)
+
+	// assert
+	assert.False(t, res)
 }
 
 // TODO test following functions
