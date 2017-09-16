@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"htmlparser/analyser"
 	"htmlparser/httpclient"
