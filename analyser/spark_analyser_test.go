@@ -87,7 +87,7 @@ func TestFindWorkerLinkForApp(t *testing.T) {
 	// assert
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
-	assert.Equal(t, "http://COPS-FCO-spark-worker-a-09.cloud.alt:4041", res)
+	assert.Equal(t, "http://localhost:8088/worker9/main.html", res)
 }
 
 func TestFindWorkerLinkForAppWhenNotFound(t *testing.T) {

@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"htmlparser/analyser"
 	"htmlparser/httpclient"
-	"errors"
 	"os"
 	"htmlparser/models"
 )
@@ -103,11 +102,13 @@ func getMetrics() (*models.Report, error) {
 	content, err := httpclient.RequestActiveSparkMasterContent()
 
 	if err != nil {
-		return nil, fmt.Errorf("Cannot request spark dashboard. error detail : %s", err.Error())
+		return nil, fmt.Errorf("Cannot request spark dashboard. Error detail : %s", err.Error())
 	}
 
 	appName := os.Getenv("SPARK_APP")
 	url, err := analyser.FindWorkerLinkForApp(appName, *content)
+
+	fmt.Println("Link for app name:", url)
 
 	if err != nil {
 		return nil, fmt.Errorf("Cannot find app url in spark main dashboard. %s", err)
@@ -119,7 +120,7 @@ func getMetrics() (*models.Report, error) {
 	content, err = httpclient.RequestPage(url, login, pass)
 
 	if err != nil {
-		return nil, fmt.Errorf("%s. %s", errors.New("Cannot request spark dashboard"),err)
+		return nil, fmt.Errorf("%s. %s", "Cannot request spark dashboard : ", err)
 	}
 	res, err := analyser.ParseSparkDashboard(*content)
 
