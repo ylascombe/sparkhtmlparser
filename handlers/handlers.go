@@ -8,42 +8,25 @@ import (
 	"htmlparser/httpclient"
 	"errors"
 	"os"
+	"htmlparser/models"
 )
 
 func Prometheus(c *gin.Context) {
 
-	content, err := httpclient.RequestSparkDashboard()
+	appSparkMetrics, err := getMetrics()
 
 	if err != nil {
-		c.Error(errors.New("Cannot request spark dashboard"))
-	}
-	url, err := analyser.FindWorkerLinkForApp("colis360", content)
-
-	if err != nil {
-		c.String(503, "Cannot find app url in spark main dashboard")
-	}
-
-	// Now, request spark worker dashboard
-	login := os.Getenv("SPARK_LOGIN")
-	pass := os.Getenv("SPARK_PASSWORD")
-	content, err = httpclient.RequestPage(url, login, pass)
-
-	if err != nil {
-		c.Error(errors.New("Cannot request spark dashboard"))
-	}
-	res, err := analyser.ParseSparkDashboard(content)
-
-	if err != nil {
-		c.String(503, "Error ")
+		c.Error(err)
+		return
 	}
 	var schedulingDelays []float64
 	var evtsPerBatchs []float64
 	var processingTimes []float64
 
-	for i := 0; i < len(res.Batches); i++ {
-		schedulingDelays = append(schedulingDelays, float64(res.Batches[i].SchedulingDelay))
-		evtsPerBatchs = append(evtsPerBatchs, float64(res.Batches[i].InputSize))
-		processingTimes = append(processingTimes, float64(res.Batches[i].ProcessingTime))
+	for i := 0; i < len(appSparkMetrics.Batches); i++ {
+		schedulingDelays = append(schedulingDelays, float64(appSparkMetrics.Batches[i].SchedulingDelay))
+		evtsPerBatchs = append(evtsPerBatchs, float64(appSparkMetrics.Batches[i].InputSize))
+		processingTimes = append(processingTimes, float64(appSparkMetrics.Batches[i].ProcessingTime))
 	}
 
 	// actual_events_per_second_processed
@@ -67,29 +50,11 @@ func Prometheus(c *gin.Context) {
 
 func Csv(c *gin.Context) {
 
-	content, err := httpclient.RequestSparkDashboard()
+	res, err := getMetrics()
 
 	if err != nil {
-		c.Error(errors.New("Cannot request spark dashboard"))
-	}
-	url, err := analyser.FindWorkerLinkForApp("colis360", content)
-
-	if err != nil {
-		c.String(503, "Cannot find app url in spark main dashboard")
-	}
-
-	// Now, request spark worker dashboard
-	login := os.Getenv("SPARK_LOGIN")
-	pass := os.Getenv("SPARK_PASSWORD")
-	content, err = httpclient.RequestPage(url, login, pass)
-
-	if err != nil {
-		c.Error(errors.New("Cannot request spark dashboard"))
-	}
-	res, err := analyser.ParseSparkDashboard(content)
-
-	if err != nil {
-		c.String(503, "Error")
+		c.Error(err)
+		return
 	}
 
 	c.String(200, "Batch Time,Input Size,Scheduling Delay,Processing Time,Total Delay")
@@ -134,18 +99,32 @@ func getPercentile(array []float64, percent int, coeff int) float64 {
 	return percentile / float64(coeff)
 }
 
-// TODO DEPRECATED to remove after validation
-func FindPage(c *gin.Context) {
-	content, err := httpclient.RequestSparkDashboard()
+func getMetrics() (*models.Report, error) {
+	content, err := httpclient.RequestActiveSparkMasterContent()
 
 	if err != nil {
-		c.Error(errors.New("Cannot request spark dashboard"))
+		return nil, fmt.Errorf("Cannot request spark dashboard. error detail : %s", err.Error())
 	}
-	url, err := analyser.FindWorkerLinkForApp("colis360", content)
+
+	appName := os.Getenv("SPARK_APP")
+	url, err := analyser.FindWorkerLinkForApp(appName, *content)
 
 	if err != nil {
-		c.String(503, "Error")
+		return nil, fmt.Errorf("Cannot find app url in spark main dashboard. %s", err)
 	}
-	fmt.Println(url)
-	return
+
+	// Now, request spark worker dashboard
+	login := os.Getenv("SPARK_LOGIN")
+	pass := os.Getenv("SPARK_PASSWORD")
+	content, err = httpclient.RequestPage(url, login, pass)
+
+	if err != nil {
+		return nil, fmt.Errorf("%s. %s", errors.New("Cannot request spark dashboard"),err)
+	}
+	res, err := analyser.ParseSparkDashboard(*content)
+
+	if err != nil {
+		return nil, fmt.Errorf("Error while parsing spark worker streaming page. %s", err)
+	}
+	return res, nil
 }

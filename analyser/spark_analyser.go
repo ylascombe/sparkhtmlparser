@@ -268,6 +268,7 @@ func renderNode(node *html.Node) string {
 func FindWorkerLinkForApp(appName string, content string) (string, error) {
 
 	doc, _ := html.Parse(strings.NewReader(content))
+
 	node, err := FindTagWithContent(doc, "h4", "<h4> Running Applications </h4>")
 
 	if err != nil {
@@ -303,4 +304,9 @@ func FindWorkerLinkForApp(appName string, content string) (string, error) {
 	} else {
 		return "", errors.New(fmt.Sprintf("Link not found for application %s", appName))
 	}
+}
+
+
+func IsActiveSparkMaster(htmlContent string) bool {
+	return strings.Contains(htmlContent, "<li><strong>Status:</strong> ALIVE</li>")
 }
