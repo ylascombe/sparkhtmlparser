@@ -1,17 +1,18 @@
 package httpclient
 
 import (
-	"testing"
-	"os"
-	"github.com/stretchr/testify/assert"
 	"errors"
 	"fmt"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetUrlIndex0(t *testing.T) {
 
 	// arrange
-	os.Setenv("SPARK_DASHBOARD_URL", "http://server1.com:8080/;http://server2.com:8080/")
+	os.Setenv("SPARK_DASHBOARD_URL", "http://server1.com:8080/,http://server2.com:8080/")
 
 	// act
 	res, err := GetUrl(0)
@@ -24,7 +25,7 @@ func TestGetUrlIndex0(t *testing.T) {
 func TestGetUrlIndex1(t *testing.T) {
 
 	// arrange
-	os.Setenv("SPARK_DASHBOARD_URL", "http://server1.com:8080/;http://server2.com:8080/")
+	os.Setenv("SPARK_DASHBOARD_URL", "http://server1.com:8080/,http://server2.com:8080/")
 
 	// act
 	res, err := GetUrl(1)
@@ -73,7 +74,7 @@ func TestGetUrlNumberWhen1(t *testing.T) {
 
 func TestGetUrlNumberWhen2(t *testing.T) {
 	// arrange
-	os.Setenv("SPARK_DASHBOARD_URL", "http://server1.com:8080/;http://server2.com:8080/")
+	os.Setenv("SPARK_DASHBOARD_URL", "http://server1.com:8080/,http://server2.com:8080/")
 
 	// act
 	res := getUrlNumber()
@@ -84,13 +85,13 @@ func TestGetUrlNumberWhen2(t *testing.T) {
 
 func TestGetActiveSparkMasterContent(t *testing.T) {
 	// arrange
-	url1 :=  "http://server1.com:8080/"
-	url2 :=  "http://server2.com:8080/"
-	os.Setenv("SPARK_DASHBOARD_URL", fmt.Sprintf("%s;%s", url1, url2))
+	url1 := "http://server1.com:8080/"
+	url2 := "http://server2.com:8080/"
+	os.Setenv("SPARK_DASHBOARD_URL", fmt.Sprintf("%s,%s", url1, url2))
 
 	htmlContentWithActiveStatus := "<html><body><ul><li><strong>Status:</strong> ALIVE</li></ul></body></html>"
 
-	fakeRequestSparkDashboardFunc := func (url string) (*string, error) {
+	fakeRequestSparkDashboardFunc := func(url string) (*string, error) {
 		if url == url1 {
 			res := "<html><body><ul><li><strong>Status:</strong> STAND BY</li></ul></body></html>"
 			return &res, nil

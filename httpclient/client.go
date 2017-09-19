@@ -1,15 +1,15 @@
 package httpclient
 
 import (
+	"errors"
+	"htmlparser/analyser"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
-	"errors"
-	"htmlparser/analyser"
 )
 
-const URL_SEPARATOR = ";"
+const URL_SEPARATOR = ","
 
 func RequestSparkDashboard(url string) (*string, error) {
 
@@ -40,12 +40,16 @@ func SparkDashboardIsRequestable() bool {
 	login := os.Getenv("SPARK_LOGIN")
 	pass := os.Getenv("SPARK_PASSWORD")
 
-	return IsRequestable(url ,login, pass)
+	return IsRequestable(url, login, pass)
 }
 
 func IsRequestable(url string, login string, pass string) bool {
 
 	client := &http.Client{}
+
+	if !strings.Contains(url, "http://") {
+		url = "http://" + url
+	}
 	req, err := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(login, pass)
 
@@ -94,9 +98,14 @@ func GetActiveSparkMasterContent(funcRequestSparkDashboard func(string) (*string
 		return nil, errors.New("No url found in SPARK_DASHBOARD_URL env var. Please chez it !")
 	}
 
-	for i:=0; i<nb; i++ {
+	for i := 0; i < nb; i++ {
 
 		url, err := GetUrl(i)
+
+		if !strings.Contains(url, "http://") {
+			url = "http://" + url
+		}
+
 		content, err := funcRequestSparkDashboard(url)
 
 		if err != nil {

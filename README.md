@@ -15,24 +15,25 @@ export SPARK_APP=colis360
 make run
 ```
 
+In case of multiple spark master, yyou can provide the entire list with a "," separator.
+
 By default, create a HTTP server that listen on port 8080. To change it,
 simply define an env var `PORT` with the given value.
 ```
-export PORT=8080
+export PORT=5000
 ```
-
-
 
 # Dev mode
 
 To test locally without have a running spark available in network, you can 
 run a mock page by running a second server described in mock folder
 
-```
+````
 cd mock
-go run master.go
-go run worker.go
+go run main.go
+export SPARK_DASHBOARD_URL=http://localhost:8088/myApp/appStreamingStatistics.html
+export SPARK_DASHBOARD_URL=http://localhost:8088/mainPage/mainpage.html
 cd ..
-export "SPARK_DASHBOARD_URL=http://localhost:8088/sparkMasterWaiting.html;http://localhost:8088/sparkMasterActive.html"
 make run
-```
+````
+
